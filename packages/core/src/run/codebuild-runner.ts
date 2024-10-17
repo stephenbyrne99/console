@@ -277,7 +277,7 @@ export module CodebuildRunner {
       resource: z.custom<Resource>(),
       payload: z.custom<Run.RunnerEvent>(),
       timeoutInMinutes: z.number().int(),
-      cachedPaths: z.array(z.string()).optional(),
+      cachedPaths: z.string().optional(),
     }),
     async ({
       credentials,
@@ -288,6 +288,8 @@ export module CodebuildRunner {
       cachedPaths,
     }) => {
       if (resource.engine !== "codebuild") return;
+
+      const cachedPathsList = cachedPaths ? cachedPaths.split(",") : [];
 
       const codebuild = new CodeBuildClient({
         credentials,
@@ -301,11 +303,11 @@ export module CodebuildRunner {
             projectName,
             buildspecOverride: [
               "version: 0.2",
-              ...(cachedPaths && cachedPaths.length > 0
+              ...(cachedPathsList && cachedPathsList.length > 0
                 ? [
                     "cache:",
                     "  paths:",
-                    ...cachedPaths.map((path: string) => `    - '${path}'`),
+                    ...cachedPathsList.map((path: string) => `    - '${path}'`),
                   ]
                 : []),
               "phases:",

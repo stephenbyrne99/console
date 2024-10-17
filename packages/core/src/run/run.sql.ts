@@ -143,7 +143,7 @@ export const AutodeployConfigRunner = z.object({
   image: z.string().min(1).optional(),
   compute: z.enum(Compute).optional(),
   timeout: z.string().optional(),
-  cachedPaths: z.array(z.string()).optional(),
+  cachedPaths: z.string(), // stringified array
 });
 
 export const AutodeployConfig = z.object({
@@ -154,8 +154,8 @@ export const AutodeployConfig = z.object({
     })
     .optional(),
 });
-export type AutodeployConfig = z.infer<typeof AutodeployConfig>;
 
+export type AutodeployConfig = z.infer<typeof AutodeployConfig>;
 export const Env = z.record(z.string().min(1));
 export type Env = z.infer<typeof Env>;
 
