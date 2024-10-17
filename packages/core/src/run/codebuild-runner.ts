@@ -28,7 +28,7 @@ export module CodebuildRunner {
   export const getImage = zod(z.enum(Architecture), (architecture) =>
     architecture === "x86_64"
       ? `aws/codebuild/amazonlinux2-x86_64-standard:5.0`
-      : `aws/codebuild/amazonlinux2-aarch64-standard:3.0`
+      : `aws/codebuild/amazonlinux2-aarch64-standard:3.0`,
   );
 
   export const createResource = zod(
@@ -53,7 +53,7 @@ export module CodebuildRunner {
       if (architecture === "arm64") {
         if (compute !== "small" && compute !== "large")
           throw new RunnerError(
-            `AWS CodeBuild does not support "${compute}" compute size for ARM architecture`
+            `AWS CodeBuild does not support "${compute}" compute size for ARM architecture`,
           );
       }
 
@@ -92,7 +92,7 @@ export module CodebuildRunner {
                   },
                 ],
               }),
-            })
+            }),
           );
           await iam.send(
             new PutRolePolicyCommand({
@@ -131,7 +131,7 @@ export module CodebuildRunner {
                   },
                 ],
               }),
-            })
+            }),
           );
           return ret.Role?.Arn!;
         } catch (e: any) {
@@ -143,7 +143,7 @@ export module CodebuildRunner {
             .send(
               new GetRoleCommand({
                 RoleName: roleName,
-              })
+              }),
             )
             .then((ret) => ret.Role?.Arn!);
         }
@@ -187,7 +187,7 @@ export module CodebuildRunner {
                   status: "ENABLED",
                 },
               },
-            })
+            }),
           );
           return ret.project?.arn!;
         } catch (e: any) {
@@ -196,7 +196,7 @@ export module CodebuildRunner {
             e.message === `Region ${region} is not supported for ARM_CONTAINER`
           )
             throw new RunnerError(
-              `AWS CodeBuild does not support ARM architecture in ${region} region`
+              `AWS CodeBuild does not support ARM architecture in ${region} region`,
             );
           else if (
             e.name === "InvalidInputException" &&
@@ -211,7 +211,7 @@ export module CodebuildRunner {
           return `arn:aws:codebuild:${region}:${awsAccountExternalID}:project/${projectName}`;
         }
       }
-    }
+    },
   );
 
   export const removeResource = zod(
@@ -240,7 +240,7 @@ export module CodebuildRunner {
             new DeleteRolePolicyCommand({
               RoleName: roleName,
               PolicyName: "default",
-            })
+            }),
           );
         } catch (e: any) {
           console.error(e);
@@ -261,13 +261,13 @@ export module CodebuildRunner {
           await codebuild.send(
             new DeleteProjectCommand({
               name: resource.properties.project.split("/").pop()!,
-            })
+            }),
           );
         } catch (e: any) {
           console.error(e);
         }
       }
-    }
+    },
   );
 
   export const invoke = zod(
@@ -277,8 +277,16 @@ export module CodebuildRunner {
       resource: z.custom<Resource>(),
       payload: z.custom<Run.RunnerEvent>(),
       timeoutInMinutes: z.number().int(),
+      cachedPaths: z.array(z.string()).optional(),
     }),
-    async ({ credentials, region, resource, payload, timeoutInMinutes }) => {
+    async ({
+      credentials,
+      region,
+      resource,
+      payload,
+      timeoutInMinutes,
+      cachedPaths,
+    }) => {
       if (resource.engine !== "codebuild") return;
 
       const codebuild = new CodeBuildClient({
@@ -293,6 +301,13 @@ export module CodebuildRunner {
             projectName,
             buildspecOverride: [
               "version: 0.2",
+              ...(cachedPaths && cachedPaths.length > 0
+                ? [
+                    "cache:",
+                    "  paths:",
+                    ...cachedPaths.map((path: string) => `    - '${path}'`),
+                  ]
+                : []),
               "phases:",
               "  build:",
               "    commands:",
@@ -319,16 +334,16 @@ export module CodebuildRunner {
               },
             ],
             timeoutInMinutesOverride: timeoutInMinutes,
-          })
+          }),
         );
       } catch (e: any) {
         if (e.name === "AccountLimitExceededException") {
           throw new RunnerError(
-            `AWS CodeBuild has reached the limit: ${e.message}. Open an AWS support case to increase the limit.`
+            `AWS CodeBuild has reached the limit: ${e.message}. Open an AWS support case to increase the limit.`,
           );
         }
         throw e;
       }
-    }
+    },
   );
 }

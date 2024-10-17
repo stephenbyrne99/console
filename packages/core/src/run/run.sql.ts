@@ -143,6 +143,7 @@ export const AutodeployConfigRunner = z.object({
   image: z.string().min(1).optional(),
   compute: z.enum(Compute).optional(),
   timeout: z.string().optional(),
+  cachedPaths: z.array(z.string()).optional(),
 });
 
 export const AutodeployConfig = z.object({
@@ -184,7 +185,7 @@ export const runnerTable = mysqlTable(
       columns: [table.workspaceID, table.appRepoID],
       foreignColumns: [appRepoTable.workspaceID, appRepoTable.id],
     }).onDelete("cascade"),
-  })
+  }),
 );
 
 export const runnerUsageTable = mysqlTable(
@@ -211,9 +212,9 @@ export const runnerUsageTable = mysqlTable(
     uniqueStageID: unique("runner_id_stage_id_unique").on(
       table.workspaceID,
       table.runnerID,
-      table.stageID
+      table.stageID,
     ),
-  })
+  }),
 );
 
 export const runTable = mysqlTable(
@@ -246,9 +247,9 @@ export const runTable = mysqlTable(
     active: unique("unique_active").on(
       table.workspaceID,
       table.stageID,
-      table.active
+      table.active,
     ),
-  })
+  }),
 );
 
 export const runConfigTable = mysqlTable(
@@ -268,11 +269,11 @@ export const runConfigTable = mysqlTable(
     stagePattern: unique("unique_stage_pattern").on(
       table.workspaceID,
       table.appID,
-      table.stagePattern
+      table.stagePattern,
     ),
     appID: foreignKey({
       columns: [table.workspaceID, table.appID],
       foreignColumns: [app.workspaceID, app.id],
     }).onDelete("cascade"),
-  })
+  }),
 );
