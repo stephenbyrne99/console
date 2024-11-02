@@ -6,7 +6,8 @@
   "scripts": {
     "test": "sst bind vitest",
     "typecheck": "tsc --noEmit --incremental",
-    "db": "sst bind drizzle-kit"
+    "db": "sst bind drizzle-kit",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@types/luxon": "^3.3.1",
