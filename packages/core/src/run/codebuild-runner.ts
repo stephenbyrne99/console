@@ -4,7 +4,7 @@ import {
   DeleteProjectCommand,
   StartBuildCommand,
   CodeBuildClient,
-  ComputeType
+  ComputeType,
 } from "@aws-sdk/client-codebuild";
 import {
   PutRolePolicyCommand,
@@ -12,7 +12,7 @@ import {
   GetRoleCommand,
   IAMClient,
   DeleteRoleCommand,
-  DeleteRolePolicyCommand
+  DeleteRolePolicyCommand,
 } from "@aws-sdk/client-iam";
 import { zod } from "../util/zod";
 import { Resource, Architecture, Compute } from "./run.sql";
@@ -28,7 +28,7 @@ export module CodebuildRunner {
   export const getImage = zod(z.enum(Architecture), (architecture) =>
     architecture === "x86_64"
       ? `aws/codebuild/amazonlinux2-x86_64-standard:5.0`
-      : `aws/codebuild/amazonlinux2-aarch64-standard:3.0`
+      : `aws/codebuild/amazonlinux2-aarch64-standard:3.0`,
   );
 
   export const createResource = zod(
@@ -39,7 +39,7 @@ export module CodebuildRunner {
       suffix: z.string().nonempty(),
       image: z.string().nonempty(),
       architecture: z.enum(Architecture),
-      compute: z.enum(Compute)
+      compute: z.enum(Compute),
     }),
     async ({
       credentials,
@@ -48,19 +48,19 @@ export module CodebuildRunner {
       suffix,
       image,
       architecture,
-      compute
+      compute,
     }): Promise<Resource> => {
       if (architecture === "arm64") {
         if (compute !== "small" && compute !== "large")
           throw new RunnerError(
-            `AWS CodeBuild does not support "${compute}" compute size for ARM architecture`
+            `AWS CodeBuild does not support "${compute}" compute size for ARM architecture`,
           );
       }
 
       const sdkConfig = {
         credentials,
         region,
-        retryStrategy: RETRY_STRATEGY
+        retryStrategy: RETRY_STRATEGY,
       };
       const projectName = `sst-runner-${suffix}`;
       const roleArn = await createIamRoleInUserAccount();
@@ -69,8 +69,8 @@ export module CodebuildRunner {
         engine: "codebuild",
         properties: {
           role: roleArn,
-          project: projectArn
-        }
+          project: projectArn,
+        },
       };
 
       async function createIamRoleInUserAccount() {
@@ -86,13 +86,13 @@ export module CodebuildRunner {
                   {
                     Effect: "Allow",
                     Principal: {
-                      Service: "codebuild.amazonaws.com"
+                      Service: "codebuild.amazonaws.com",
                     },
-                    Action: "sts:AssumeRole"
-                  }
-                ]
-              })
-            })
+                    Action: "sts:AssumeRole",
+                  },
+                ],
+              }),
+            }),
           );
           await iam.send(
             new PutRolePolicyCommand({
@@ -104,15 +104,15 @@ export module CodebuildRunner {
                   {
                     Effect: "Allow",
                     Action: "events:PutEvents",
-                    Resource: "*"
+                    Resource: "*",
                   },
                   {
                     Effect: "Allow",
                     Action: ["logs:CreateLogStream", "logs:CreateLogGroup", "logs:PutLogEvents"],
                     Resource: [
                       `arn:aws:logs:${region}:${awsAccountExternalID}:log-group:/aws/codebuild/${projectName}`,
-                      `arn:aws:logs:${region}:${awsAccountExternalID}:log-group:/aws/codebuild/${projectName}:*`
-                    ]
+                      `arn:aws:logs:${region}:${awsAccountExternalID}:log-group:/aws/codebuild/${projectName}:*`,
+                    ],
                   },
                   {
                     Action: [
@@ -120,14 +120,14 @@ export module CodebuildRunner {
                       "codebuild:CreateReport",
                       "codebuild:UpdateReport",
                       "codebuild:BatchPutTestCases",
-                      "codebuild:BatchPutCodeCoverages"
+                      "codebuild:BatchPutCodeCoverages",
                     ],
                     Resource: `arn:aws:codebuild:${region}:${awsAccountExternalID}:report-group/${projectName}-*`,
-                    Effect: "Allow"
-                  }
-                ]
-              })
-            })
+                    Effect: "Allow",
+                  },
+                ],
+              }),
+            }),
           );
           return ret.Role?.Arn!;
         } catch (e: any) {
@@ -138,8 +138,8 @@ export module CodebuildRunner {
           return await iam
             .send(
               new GetRoleCommand({
-                RoleName: roleName
-              })
+                RoleName: roleName,
+              }),
             )
             .then((ret) => ret.Role?.Arn!);
         }
@@ -159,8 +159,8 @@ export module CodebuildRunner {
                   "phases:",
                   "  build:",
                   "    commands:",
-                  "      - curl -fsSL https://ion.sst.dev/install | bash"
-                ].join("\n")
+                  "      - curl -fsSL https://ion.sst.dev/install | bash",
+                ].join("\n"),
               },
               artifacts: { type: "NO_ARTIFACTS" },
               environment: {
@@ -168,19 +168,19 @@ export module CodebuildRunner {
                   small: "BUILD_GENERAL1_SMALL" as const,
                   medium: "BUILD_GENERAL1_MEDIUM" as const,
                   large: "BUILD_GENERAL1_LARGE" as const,
-                  xlarge: "BUILD_GENERAL1_XLARGE" as const
+                  xlarge: "BUILD_GENERAL1_XLARGE" as const,
                 }[compute] as ComputeType,
                 image,
                 type: architecture === "x86_64" ? "LINUX_CONTAINER" : "ARM_CONTAINER",
-                privilegedMode: true
+                privilegedMode: true,
               },
               timeoutInMinutes: 60,
               logsConfig: {
                 cloudWatchLogs: {
-                  status: "ENABLED"
-                }
-              }
-            })
+                  status: "ENABLED",
+                },
+              },
+            }),
           );
           return ret.project?.arn!;
         } catch (e: any) {
@@ -189,7 +189,7 @@ export module CodebuildRunner {
             e.message === `Region ${region} is not supported for ARM_CONTAINER`
           )
             throw new RunnerError(
-              `AWS CodeBuild does not support ARM architecture in ${region} region`
+              `AWS CodeBuild does not support ARM architecture in ${region} region`,
             );
           else if (
             e.name === "InvalidInputException" &&
@@ -203,20 +203,20 @@ export module CodebuildRunner {
           return `arn:aws:codebuild:${region}:${awsAccountExternalID}:project/${projectName}`;
         }
       }
-    }
+    },
   );
 
   export const removeResource = zod(
     z.object({
       credentials: z.custom<Credentials>(),
       region: z.string().nonempty(),
-      resource: z.custom<Resource>()
+      resource: z.custom<Resource>(),
     }),
     async ({ region, resource, credentials }) => {
       const sdkConfig = {
         credentials,
         region,
-        retryStrategy: RETRY_STRATEGY
+        retryStrategy: RETRY_STRATEGY,
       };
       await removeIamRoleInUserAccount();
       await removeFunctionInUserAccount();
@@ -231,8 +231,8 @@ export module CodebuildRunner {
           await iam.send(
             new DeleteRolePolicyCommand({
               RoleName: roleName,
-              PolicyName: "default"
-            })
+              PolicyName: "default",
+            }),
           );
         } catch (e: any) {
           console.error(e);
@@ -252,14 +252,14 @@ export module CodebuildRunner {
         try {
           await codebuild.send(
             new DeleteProjectCommand({
-              name: resource.properties.project.split("/").pop()!
-            })
+              name: resource.properties.project.split("/").pop()!,
+            }),
           );
         } catch (e: any) {
           console.error(e);
         }
       }
-    }
+    },
   );
 
   export const invoke = zod(
@@ -269,7 +269,7 @@ export module CodebuildRunner {
       resource: z.custom<Resource>(),
       payload: z.custom<Run.RunnerEvent>(),
       timeoutInMinutes: z.number().int(),
-      cachedPaths: z.string().optional()
+      cachedPaths: z.string().optional(),
     }),
     async ({ credentials, region, resource, payload, timeoutInMinutes, cachedPaths }) => {
       if (resource.engine !== "codebuild") return;
@@ -279,7 +279,7 @@ export module CodebuildRunner {
       const codebuild = new CodeBuildClient({
         credentials,
         region,
-        retryStrategy: RETRY_STRATEGY
+        retryStrategy: RETRY_STRATEGY,
       });
       const projectName = resource.properties.project.split("/").pop()!;
       try {
@@ -292,7 +292,7 @@ export module CodebuildRunner {
                 ? [
                     "cache:",
                     "  paths:",
-                    ...cachedPathsList.map((path: string) => `    - '${path}'`)
+                    ...cachedPathsList.map((path: string) => `    - '${path}'`),
                   ]
                 : []),
               "phases:",
@@ -311,26 +311,26 @@ export module CodebuildRunner {
                 `  logGroupName:'/aws/codebuild/${projectName}',`,
                 `  logStreamName:process.env.CODEBUILD_LOG_PATH,`,
                 `});`,
-                `"`
-              ].join("")
+                `"`,
+              ].join(""),
             ].join("\n"),
             environmentVariablesOverride: [
               {
                 name: "SST_RUNNER_EVENT",
-                value: JSON.stringify(payload)
-              }
+                value: JSON.stringify(payload),
+              },
             ],
-            timeoutInMinutesOverride: timeoutInMinutes
-          })
+            timeoutInMinutesOverride: timeoutInMinutes,
+          }),
         );
       } catch (e: any) {
         if (e.name === "AccountLimitExceededException") {
           throw new RunnerError(
-            `AWS CodeBuild has reached the limit: ${e.message}. Open an AWS support case to increase the limit.`
+            `AWS CodeBuild has reached the limit: ${e.message}. Open an AWS support case to increase the limit.`,
           );
         }
         throw e;
       }
-    }
+    },
   );
 }
